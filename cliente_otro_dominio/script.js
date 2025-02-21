@@ -61,25 +61,31 @@ function updateTable(books) {
         row.append(celdaAcciones);
         let buttonEdit = document.createElement('button');
         buttonEdit.innerHTML = "Modificar";
-        buttonEdit.addEventListener('click', (event) => editBook(event, book._id));
+        buttonEdit.addEventListener('click', editBook);
         celdaAcciones.append(buttonEdit);
         let buttonDelete = document.createElement('button');
         buttonDelete.innerHTML = "Eliminar";
-        buttonDelete.addEventListener('click', (event) => deleteBook(event, book._id)); 
+        buttonDelete.addEventListener('click', deleteBook);
         celdaAcciones.append(buttonDelete);
     }
 }
 
-async function deleteBook(event, bookID) {
+async function deleteBook(event) {
+    // Leemos el contenido de la columna id de esa fila
+    let celdas = event.target.parentElement.parentElement.children;
+    let id = celdas[0].innerHTML;
     // Hacemos la petición de DELETE a la API pasando un json en el cuerpo del mensaje
     let apiUrl = "http://localhost:5000/api/books";
+    let deletedBook = {
+        "id": id
+    }
 
     let response = await fetch(apiUrl, {
         method: "DELETE",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ _id: bookID })
+        body: JSON.stringify(deletedBook)
     });
     let json = await response.json()
     // Muestra respuesta de la API (JSON) por consola
@@ -89,9 +95,10 @@ async function deleteBook(event, bookID) {
     fetchBooks();
 }
 
-async function editBook(event, bookID) {
+async function editBook(event) {
     // Leemos el contenido de las columnas id, título, autor, año de esa fila
     let celdas = event.target.parentElement.parentElement.children;
+    let id = celdas[0].innerHTML;
     let titulo = celdas[1].innerHTML;
     let autor = celdas[2].innerHTML;
     let ano = celdas[3].innerHTML;
@@ -100,7 +107,7 @@ async function editBook(event, bookID) {
     // p.ej. { "id": 1, "title": "titulo", "author": "autor", "year": 1980 }
     let apiUrl = "http://localhost:5000/api/books"
     let modifiedBook = {
-        "_id": bookID,
+        "id": id,
         "title": titulo,
         "author": autor,
         "year": ano
