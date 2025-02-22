@@ -1,92 +1,81 @@
-const Library = require('../models/Library');
+const Library = require("../models/Library"); // Import the singleton instance
 
 const getBooks = async (req, res) => {
     try {
-        let library = new Library();
-        let books = await library.listAll();
+        let books = await Library.listAll();
         res.json(books);
-        library.close();
     } catch (error) {
-        res.status(500).json("Error getting books...");
+        console.error("❌ Error getting books:", error);
+        res.status(500).json({ message: "Error getting books" });
     }
 };
 
 const createBook = async (req, res) => {
     try {
-        let library = new Library();
-
         const newBook = {
             title: req.body.title,
             author: req.body.author,
-            year: req.body.year
+            year: req.body.year,
         };
 
-        // const id = await library.getnextID();
-        // newBook.id = id;
+        let newBookId = await Library.create(newBook);
 
-        let created = await library.create(newBook);
-
-        if (created) {
-            console.log("Book created successfully");
-            res.json("Book created successfully");
+        if (newBookId) {
+            console.log("✅ Book created successfully with ID:", newBookId);
+            res.json({ message: "Book created successfully", id: newBookId });
         } else {
-            console.log("Error creating new book...");
-            res.status(500).json("Error creating new book...");
+            console.error("❌ Error creating new book...");
+            res.status(500).json({ message: "Error creating new book" });
         }
-        library.close();
     } catch (error) {
-        console.log("Error creating new book...", error);
-        res.status(500).json("Error creating new book...");
+        console.error("❌ Error creating new book:", error);
+        res.status(500).json({ message: "Error creating new book" });
     }
 };
 
 const updateBook = async (req, res) => {
     try {
-        let library = new Library();
-
-        let bookID = req.params.id; // Use req.body.id instead of req.body._id
-
+        let bookID = req.body.id;
         const updatedBook = {
             title: req.body.title,
             author: req.body.author,
-            year: req.body.year
+            year: req.body.year,
         };
+        // Log to check the received data
+        console.log("Updating book with ID:", bookID);
+        console.log("Updated Book Data:", updatedBook);
 
-        let updated = await library.update(bookID, updatedBook);
+        let updated = await Library.update(bookID, updatedBook);
 
         if (updated) {
-            console.log("Book updated successfully");
-            res.json("Book updated successfully");
+            console.log("✅ Book updated successfully");
+            res.json({ message: "Book updated successfully" });
         } else {
-            console.log("Error updating book...");
-            res.status(500).json("Error updating book...");
+            console.error("❌ Error updating book...");
+            res.status(500).json({ message: "Error updating book" });
         }
-        library.close();
     } catch (error) {
-        console.log("Error updating book...", error);
-        res.status(500).json("Error updating book...");
+        console.error("❌ Error updating book:", error);
+        res.status(500).json({ message: "Error updating book" });
     }
 };
 
 const deleteBook = async (req, res) => {
     try {
-        let library = new Library();
+        let bookID = req.body.id;
 
-        let bookID = req.body.id; // Use req.body.id instead of req.body._id
-
-        let deleted = await library.delete(bookID);
+        let deleted = await Library.delete(bookID);
 
         if (deleted) {
-            console.log("Book deleted successfully");
-            res.json("Book deleted successfully");
+            console.log("✅ Book deleted successfully");
+            res.json({ message: "Book deleted successfully" });
         } else {
-            console.log("Error deleting book...");
-            res.status(500).json("Error deleting book...");
+            console.error("❌ Error deleting book...");
+            res.status(500).json({ message: "Error deleting book" });
         }
-        library.close();
     } catch (error) {
-        console.log("Error deleting book...", error);
-        res.status(500).json("Error deleting book...");
+        console.error("❌ Error deleting book:", error);
+        res.status(500).json({ message: "Error deleting book" });
     }
 };
 
@@ -94,5 +83,5 @@ module.exports = {
     getBooks,
     createBook,
     updateBook,
-    deleteBook
+    deleteBook,
 };

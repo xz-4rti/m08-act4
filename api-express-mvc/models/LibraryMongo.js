@@ -27,7 +27,7 @@
 //   listAll = async () => {
 //     await this.connect();
 //     const books = await this.collection.find({}).toArray();
-//     console.log("Fetched books:", books);  // 🔍 Verifica qué datos devuelve
+//     console.log("Fetched books:", books);
 //     await this.close();
 //     return books;
 //   };
@@ -38,9 +38,7 @@
 //     return lastBook ? lastBook.id + 1 : 1;
 //   }
 
-//   // Create a new book
 //   create = async (newBook) => {
-
 //     try {
 //       await this.connect();
 //       const result = await this.collection.insertOne(newBook);
@@ -53,24 +51,22 @@
 //     }
 //   }
 
-//   // Update a book
 //   update = async (bookID, updatedBook) => {
 //     await this.connect();
 //     let query = {};
-//       if (isNaN(bookID)) {
-//         query = { _id: new ObjectId(String(bookID)) };
-//       } else {
-//         query = { _id: parseInt(bookID) };
-//       }
+//     if (isNaN(bookID)) {
+//       query = { _id: new ObjectId(String(bookID)) };
+//     } else {
+//       query = { _id: parseInt(bookID) };
+//     }
 //     const result = await this.collection.updateOne(
 //       query,
 //       { $set: updatedBook }
 //     );
 //     await this.close();
-//     return result.modifiedCount; // Return the number of documents updated
+//     return result.modifiedCount;
 //   }
 
-//   // Delete a book
 //   delete = async (bookID) => {
 //     try {
 //       await this.connect();
@@ -83,8 +79,7 @@
 //       const result = await this.collection.deleteOne(query);
 //       await this.close();
 //       return result.deletedCount;
-//     } 
-//     catch (error) {
+//     } catch (error) {
 //       return error;
 //     }
 //   }

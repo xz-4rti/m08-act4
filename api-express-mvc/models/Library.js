@@ -1,70 +1,80 @@
-const mysql = require("mysql2");
+const mysql = require("mysql2/promise");
 const dbConfig = require("../config/mysql.config"); // Import the MySQL configuration
 
 class Library {
     constructor() {
-        // En el constructor, creamos una conexión a la base de datos
-        // y la guardamos en la propiedad connection de la clase
+        if (!Library.instance) {
+            this.pool = mysql.createPool({
+                host: dbConfig.HOST,
+                user: dbConfig.USER,
+                password: dbConfig.PASSWORD,
+                database: dbConfig.DB,
+                waitForConnections: true,
+                connectionLimit: 10,
+                queueLimit: 0,
+            });
 
-        // 1.Declaramos la conexión
-        let connection = mysql.createConnection({
-            host: dbConfig.HOST,
-            user: dbConfig.USER,
-            password: dbConfig.PASSWORD,
-            database: dbConfig.DB
-        });
-
-        // 2.Abrimos la conexión
-        connection.connect(error => {
-            if (error) throw error;
-            console.log("Successfully connected to the database.");
-        });
-
-        // 3.Dejamos la conexión en la propiedad connection, promisificada
-        // (para poder utilizarlas más cómodamente en el resto de métodos de la clase)
-        this.connection = connection.promise();
-    }
-
-    close = () => {
-        this.connection.end();
-    }
-
-    // métodos de la clase Library
-    listAll = async () => {
-        console.log(this.connection)
-        const [results, fields] = await this.connection.query("SELECT * FROM books");
-        return results;
-    }
-
-    create = async (newBook) => {
-        try {
-            const [results, fields] = await this.connection.query("INSERT INTO books SET ?", newBook);
-            return results.affectedRows;
-        }
-        catch (error) {
-            return error;
+            console.log("✅ Database connection pool created.");
+            Library.instance = this; // Store instance to reuse it
         }
 
-    };
+        return Library.instance; // Always return the same instance
+    }
 
-    update = async (id, updateBook) => {
+    async close() {
+        await this.pool.end();
+        console.log("✅ Database connection pool closed.");
+    }
+
+    async listAll() {
         try {
-            const {title, author, year} = updateBook;
-            const [result, fields] = await this.connection.query("UPDATE books SET title = ?, author = ?, year = ? WHERE id = ?", [title, author, year, id]);
-            return result[0].affectedRows;
+            const [results] = await this.pool.query("SELECT * FROM books");
+            return results;
         } catch (error) {
-            return error;
+            console.error("❌ Error in listAll():", error);
+            throw error;
         }
     }
 
-    delete = async (id) => {
+    async create(newBook) {
         try {
-            const [results, fields] = await this.connection.query("DELETE FROM books WHERE id = ?", [id]);
+            const [result] = await this.pool.query(
+                "INSERT INTO books SET ?",
+                newBook
+            );
+            return result.insertId; // Return the newly generated ID
         } catch (error) {
-            return error;
+            console.error("❌ Error in create():", error);
+            throw error;
         }
     }
 
+    async update(id, updateBook) {
+        try {
+            const { title, author, year } = updateBook;
+            const [result] = await this.pool.query(
+                "UPDATE books SET title = ?, author = ?, year = ? WHERE id = ?",
+                [title, author, year, id]
+            );
+            return result.affectedRows;
+        } catch (error) {
+            console.error("❌ Error in update():", error);
+            throw error;
+        }
+    }
+
+    async delete(id) {
+        try {
+            const [result] = await this.pool.query("DELETE FROM books WHERE id = ?", [
+                id,
+            ]);
+            return result.affectedRows;
+        } catch (error) {
+            console.error("❌ Error in delete():", error);
+            throw error;
+        }
+    }
 }
 
-module.exports = Library;
+// ✅ Export a SINGLE instance
+module.exports = new Library();
