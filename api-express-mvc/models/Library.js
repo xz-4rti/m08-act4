@@ -14,7 +14,15 @@ class Library {
                 queueLimit: 0,
             });
 
-            console.log("✅ Database connection pool created.");
+            this.pool.getConnection((err, connection) => {
+                if (err) {
+                    console.error("❌ Error connecting to the database:", err);
+                } else {
+                    console.log("✅ Successfully connected to the database.");
+                    connection.release();
+                }
+            });
+            
             Library.instance = this; // Store instance to reuse it
         }
 

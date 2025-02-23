@@ -1,5 +1,22 @@
 
 window.onload = () => {
+
+    // JWT
+    // Check if the user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+        showMainContent();
+        fetchBooks();
+    } else {
+        showLoginForm();
+    }
+
+    // Add event listeners
+    document.querySelector('#loginButton').addEventListener('click', login);
+    document.querySelector('#logoutButton').addEventListener('click', logout);
+    document.querySelector('#registerButton').addEventListener('click', registerUser);
+
+
     // Pedimos a la API los libros actuales en base de datos
     fetchBooks();
 
@@ -9,16 +26,110 @@ window.onload = () => {
     document.querySelector('#downloadButton').addEventListener('click', downloadVideo);
 }
 
-async function fetchBooks() {
-    let apiUrl = "http://localhost:5000/api/books";
-    let res = await fetch(apiUrl);
-    let books = await res.json();
-    // console.log(books);
+// Show the login form and hide the main content
+function showLoginForm() {
+    document.querySelector('#login-section').style.display = 'block';
+    document.querySelector('#register-section').style.display = 'block';
+    document.querySelector('#main-content').style.display = 'none';
+}
 
-    //Borramos el contenido de la tabla
-    eraseTable();
-    // Poblamos la tabla con el contenido del JSON
-    updateTable(books);
+
+// Show the main content and hide the login form
+function showMainContent() {
+    document.querySelector('#login-section').style.display = 'none';
+    document.querySelector('#register-section').style.display = 'none';
+    document.querySelector('#main-content').style.display = 'block';
+}
+
+// Login function
+async function login() {
+    const username = document.querySelector('#username').value;
+    const password = document.querySelector('#password').value;
+
+    try {
+        const response = await fetch('http://localhost:5000/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            // Store the token in localStorage
+            localStorage.setItem('token', data.token);
+            showMainContent();
+            fetchBooks();
+        } else {
+            alert(data.message || 'Error de autenticación');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    }
+}
+
+// Registration function
+async function registerUser() {
+    const username = document.querySelector('#register-username').value;
+    const password = document.querySelector('#register-password').value;
+
+    try {
+        const response = await fetch('http://localhost:5000/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message || 'Usuario registrado exitosamente');
+        } else {
+            alert(data.message || 'Error al registrar el usuario');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    }
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('token');
+    showLoginForm();
+}
+
+// Fetch books from the API
+async function fetchBooks() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showLoginForm();
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:5000/api/books', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (response.ok) {
+            const books = await response.json();
+            eraseTable();
+            updateTable(books);
+        } else if (response.status === 401) {
+            alert('Sesión expirada. Por favor, inicie sesión nuevamente.');
+            logout();
+        } else {
+            console.error('Error fetching books:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function eraseTable() {
@@ -71,31 +182,48 @@ function updateTable(books) {
 }
 
 async function deleteBook(event) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Debes iniciar sesión para eliminar un libro.');
+        showLoginForm();
+        return;
+    }
+
     // Leemos el contenido de la columna id de esa fila
     let celdas = event.target.parentElement.parentElement.children;
     let id = celdas[0].innerHTML;
-    // Hacemos la petición de DELETE a la API pasando un json en el cuerpo del mensaje
-    let apiUrl = "http://localhost:5000/api/books";
-    let deletedBook = {
-        "id": id
+
+    try {
+        const response = await fetch('http://localhost:5000/api/books', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id: id }),
+        });
+
+        if (response.ok) {
+            fetchBooks();
+        } else if (response.status === 401) {
+            alert('Sesión expirada. Por favor, inicie sesión nuevamente.');
+            logout();
+        } else {
+            console.error('Error deleting book:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error:', error);
     }
-
-    let response = await fetch(apiUrl, {
-        method: "DELETE",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(deletedBook)
-    });
-    let json = await response.json()
-    // Muestra respuesta de la API (JSON) por consola
-    console.log(json);
-
-    // Volvemos a pedir libros
-    fetchBooks();
 }
 
 async function editBook(event) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Debes iniciar sesión para modificar un libro.');
+        showLoginForm();
+        return;
+    }
+
     // Leemos el contenido de las columnas id, título, autor, año de esa fila
     let celdas = event.target.parentElement.parentElement.children;
     let id = celdas[0].innerHTML;
@@ -103,58 +231,72 @@ async function editBook(event) {
     let autor = celdas[2].innerHTML;
     let ano = celdas[3].innerHTML;
 
-    // Hacemos la petición de PUT correspondiente pasando un json en el cuerpo del mensaje
-    // p.ej. { "id": 1, "title": "titulo", "author": "autor", "year": 1980 }
-    let apiUrl = "http://localhost:5000/api/books"
-    let modifiedBook = {
-        "id": id,
-        "title": titulo,
-        "author": autor,
-        "year": ano
-    }
-    let response = await fetch(apiUrl, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(modifiedBook)
-    });
-    let json = await response.json()
-    // Muestra respuesta de la API (JSON) por consola
-    console.log(json);
+    try {
+        const response = await fetch('http://localhost:5000/api/books', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                id: id,
+                title: titulo,
+                author: autor,
+                year: ano
+            }),
+        });
 
-    //Volvemos a pedir libros
-    fetchBooks();
+        if (response.ok) {
+            fetchBooks();
+        } else if (response.status === 401) {
+            alert('Sesión expirada. Por favor, inicie sesión nuevamente.');
+            logout();
+        } else {
+            console.error('Error updating book:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
-async function createBook(event) {
+async function createBook() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Debes iniciar sesión para añadir un libro.');
+        showLoginForm();
+        return;
+    }
+
     // Leemos el contenido del formulario: título, autor, año
     let titulo = document.querySelector("#book-title").value;
     let autor = document.querySelector("#book-author").value;
     let ano = document.querySelector("#book-year").value;
 
-    // Hacemos la petición de POST correspondiente pasando un json en el cuerpo del mensaje
-    // p.ej. { "title": "titulo", "author": "autor", "year": 1980 }
-    // No añadir id, es autoincremental
-    let apiUrl = "http://localhost:5000/api/books";
-    let newBook = {
-        title: titulo,
-        author: autor,
-        year: ano
-    }
-    let response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newBook)
-    });
-    let json = await response.json()
-    // Muestra respuesta de la API (JSON) por consola
-    console.log(json);
+    try {
+        const response = await fetch('http://localhost:5000/api/books', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                title: titulo,
+                author: autor,
+                year: ano
+            }),
+        });
 
-    //Volvemos a pedir libros
-    fetchBooks();
+        if (response.ok) {
+            fetchBooks();
+        } else if (response.status === 401) {
+            alert('Sesión expirada. Por favor, inicie sesión nuevamente.');
+            logout();
+        } else {
+            console.error('Error creating book:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function downloadVideo() {
